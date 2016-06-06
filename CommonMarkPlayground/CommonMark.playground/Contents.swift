@@ -4,8 +4,6 @@ let markdown = "# Heading **strong**\nHello **Markdown**!"
 
 let tree = Node(markdown: markdown)!.elements
 
-dump(tree)
-
 extension Array where Element: NSAttributedString {
     func join(separator separator: String = "") -> NSAttributedString {
         guard !isEmpty else { return NSAttributedString() }
@@ -65,15 +63,29 @@ class Stylesheet {
     }
 }
 
+//extension InlineElement {
+//    func render(stylesheet: Stylesheet, attributes: Attributes) -> NSAttributedString {
+//        var newAttributes = attributes
+//        switch self {
+//        case .Text(let text):
+//            return NSAttributedString(string: text, attributes: attributes)
+//        case .Strong(let children):
+//            stylesheet.strong(&newAttributes)
+//            return children.map { $0.render(stylesheet, attributes: newAttributes) }.join()
+//        default:
+//            fatalError()
+//        }
+//    }
+//}
+
 extension InlineElement {
-    func render(stylesheet: Stylesheet, attributes: Attributes) -> NSAttributedString {
-        var newAttributes = attributes
+    func render(font: UIFont) -> NSAttributedString {
         switch self {
         case .Text(let text):
-            return NSAttributedString(string: text, attributes: attributes)
+            return NSAttributedString(string: text, attributes: [NSFontAttributeName: font])
         case .Strong(let children):
-            stylesheet.strong(&newAttributes)
-            return children.map { $0.render(stylesheet, attributes: newAttributes) }.join()
+            let result = children.map { $0.render(font) }.join() as! NSMutableAttributedString
+            return result.addingAttribute(NSFontAttributeName, value: baseFont.bold)
         default:
             fatalError()
         }
@@ -81,24 +93,21 @@ extension InlineElement {
 }
 
 extension Block {
-    func render(stylesheet: Stylesheet, attributes: Attributes) -> NSAttributedString {
-        var newAttributes = attributes
+    func render(font: UIFont) -> NSAttributedString {
         switch self {
         case .Paragraph(let children):
-            return children.map { $0.render(stylesheet, attributes: attributes) }.join()
+            return children.map { $0.render(font) }.join()
         case .Heading(let children, _):
-            stylesheet.heading(&newAttributes)
-            return children.map { $0.render(stylesheet, attributes: newAttributes) }.join()
+            let headerFont = baseFont.fontWithSize(48)
+            return children.map { $0.render(headerFont) }.join()
         default:
             fatalError()
         }
     }
 }
 
-let baseAttributes = Attributes(family: "Helvetica", size: 24, bold: false, color: .blackColor())
-let stylesheet = Stylesheet()
-let output = tree.map { $0.render(stylesheet, attributes: baseAttributes) }.join(separator: "\n")
-
+let baseFont = UIFont(name: "Helvetica", size: 24)!
+let output = tree.map { $0.render(baseFont) }.join()
 output
 
 
