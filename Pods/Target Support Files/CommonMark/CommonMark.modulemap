@@ -1,0 +1,6 @@
+framework module CommonMark {
+  umbrella header "CommonMark-umbrella.h"
+
+  export *
+  module * { export * }
+}

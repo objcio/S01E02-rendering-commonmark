@@ -1,0 +1,6 @@
+framework module Pods_CommonMarkPlayground {
+  umbrella header "Pods-CommonMarkPlayground-umbrella.h"
+
+  export *
+  module * { export * }
+}
