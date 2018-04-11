@@ -9,27 +9,23 @@
 import Foundation
 import cmark
 
-func stringUnlessNil(p: UnsafePointer<Int8>) -> String? {
-    return p == nil ? nil : String(UTF8String: p)
-}
-
-extension String {
-    /// Converts Markdown text to HTML.
-    /// - returns: The HTML representation of `markdown`, or `nil` if the conversion fails.
-    public func markdownToHTML() -> String? {
-        let outString = cmark_markdown_to_html(self, self.utf8.count, 0)
-        return String(UTF8String: outString)
+struct Markdown {
+    var string: String
+    
+    init(_ string: String) {
+        self.string = string
+    }
+    
+    var html: String {
+        let outString = cmark_markdown_to_html(string, string.utf8.count, 0)!
+        return String(cString: outString)
     }
 }
 
-
-extension COpaquePointer {
-    func mapIfNonNil<U>(transform: COpaquePointer->U) -> U? {
-        if self == nil {
-            return nil
-        } else {
-            return transform(self)
-        }
+extension String {
+    init?(unsafeCString: UnsafePointer<Int8>!) {
+        guard let cString = unsafeCString else { return nil }
+        self.init(cString: cString)
     }
 }
 
@@ -38,22 +34,22 @@ extension COpaquePointer {
 /// Can represent a full Markdown document (i.e. the document's root node) or
 /// just some part of a document.
 public class Node: CustomStringConvertible {
-    let node: COpaquePointer
+    let node: OpaquePointer
     
-    init(node: COpaquePointer) {
+    init(node: OpaquePointer) {
         self.node = node
     }
     
     public init?(filename: String) {
-        node = cmark_parse_file(fopen(filename, "r"), 0)
-        if node == nil { return nil}
+        guard let node = cmark_parse_file(fopen(filename, "r"), 0) else { return nil }
+        self.node = node
     }
-
+    
     public init?(markdown: String) {
-        node = cmark_parse_document(markdown, markdown.utf8.count, 0)
-        if node == nil { return nil }
+        guard let node = cmark_parse_document(markdown, markdown.utf8.count, 0) as OpaquePointer? else { return nil }
+        self.node = node
     }
-
+    
     init(type: cmark_node_type, children: [Node] = []) {
         node = cmark_node_new(type)
         for child in children {
@@ -81,17 +77,17 @@ public class Node: CustomStringConvertible {
     }
     
     var typeString: String {
-        return String(UTF8String: cmark_node_get_type_string(node))!
+        return String(cString: cmark_node_get_type_string(node)!)
     }
     
     var literal: String? {
-        get { return stringUnlessNil(cmark_node_get_literal(node)) }
+        get { return String(unsafeCString: cmark_node_get_literal(node)) }
         set {
-          if let value = newValue {
-              cmark_node_set_literal(node, value)
-          } else {
-              cmark_node_set_literal(node, nil)
-          }
+            if let value = newValue {
+                cmark_node_set_literal(node, value)
+            } else {
+                cmark_node_set_literal(node, nil)
+            }
         }
     }
     
@@ -101,69 +97,70 @@ public class Node: CustomStringConvertible {
     }
     
     var fenceInfo: String? {
-        get { return stringUnlessNil(cmark_node_get_fence_info(node)) }
+        get {
+            return String(unsafeCString: cmark_node_get_fence_info(node)) }
         set {
-          if let value = newValue {
-              cmark_node_set_fence_info(node, value)
-          } else {
-              cmark_node_set_fence_info(node, nil)
-          }
+            if let value = newValue {
+                cmark_node_set_fence_info(node, value)
+            } else {
+                cmark_node_set_fence_info(node, nil)
+            }
         }
     }
     
     var urlString: String? {
-        get { return stringUnlessNil(cmark_node_get_url(node)) }
+        get { return String(unsafeCString: cmark_node_get_url(node)) }
         set {
-          if let value = newValue {
-              cmark_node_set_url(node, value)
-          } else {
-              cmark_node_set_url(node, nil)
-          }
+            if let value = newValue {
+                cmark_node_set_url(node, value)
+            } else {
+                cmark_node_set_url(node, nil)
+            }
         }
     }
     
     var title: String? {
-        get { return stringUnlessNil(cmark_node_get_title(node)) }
+        get { return String(unsafeCString: cmark_node_get_title(node)) }
         set {
-          if let value = newValue {
-              cmark_node_set_title(node, value)
-          } else {
-              cmark_node_set_title(node, nil)
-          }
+            if let value = newValue {
+                cmark_node_set_title(node, value)
+            } else {
+                cmark_node_set_title(node, nil)
+            }
         }
     }
     
     var children: [Node] {
         var result: [Node] = []
         var child = cmark_node_first_child(node)
-        while child != nil {
-            result.append(Node(node: child))
+        while let unwrapped = child {
+            result.append(Node(node: unwrapped))
             child = cmark_node_next(child)
         }
         return result
     }
-
+    
     /// Renders the HTML representation
     public var html: String {
-        return stringUnlessNil(cmark_render_html(node, 0))!
+        return String(cString: cmark_render_html(node, 0))
     }
     
     /// Renders the XML representation
     public var xml: String {
-        return stringUnlessNil(cmark_render_xml(node, 0))!
+        return String(cString: cmark_render_xml(node, 0))
     }
     
     /// Renders the CommonMark representation
     public var commonMark: String {
-        return stringUnlessNil(cmark_render_commonmark(node, CMARK_OPT_DEFAULT, 80))!
+        return String(cString: cmark_render_commonmark(node, CMARK_OPT_DEFAULT, 80))
     }
     
     /// Renders the LaTeX representation
     public var latex: String {
-        return stringUnlessNil(cmark_render_latex(node, CMARK_OPT_DEFAULT, 80))!
+        return String(cString: cmark_render_latex(node, CMARK_OPT_DEFAULT, 80))
     }
-
+    
     public var description: String {
-        return "\(typeString) {\n \(literal ?? String())\(Array(children).description ?? String()) \n}"
+        return "\(typeString) {\n \(literal ?? String())\(Array(children).description) \n}"
     }
 }

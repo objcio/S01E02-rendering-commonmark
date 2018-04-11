@@ -6,12 +6,12 @@ let markdown = "# Heading **strong**\nHello **Markdown**!"
 
 
 extension Array where Element: NSAttributedString {
-    func join(separator separator: String = "") -> NSAttributedString {
+    func join(separator: String = "") -> NSAttributedString {
         guard !isEmpty else { return NSAttributedString() }
         let result = self[0].mutableCopy() as! NSMutableAttributedString
-        for element in suffixFrom(1) {
-            result.appendAttributedString(NSAttributedString(string: separator))
-            result.appendAttributedString(element)
+        for element in suffix(from: 1) {
+            result.append(NSAttributedString(string: separator))
+            result.append(element)
         }
         return result
     }
@@ -20,29 +20,29 @@ extension Array where Element: NSAttributedString {
 
 extension UIFont {
     var bold: UIFont {
-        let boldFontDescriptor = fontDescriptor().fontDescriptorWithSymbolicTraits(.TraitBold)
-        return UIFont(descriptor: boldFontDescriptor, size: 0)
+        let boldFontDescriptor = fontDescriptor.withSymbolicTraits(.traitBold)
+        return UIFont(descriptor: boldFontDescriptor!, size: 0)
     }
 }
 
 
 extension NSAttributedString {
-    func addingAttribute(attribute: String, value: AnyObject) -> NSAttributedString {
+    func addingAttribute(attribute: NSAttributedStringKey, value: AnyObject) -> NSAttributedString {
         let result = mutableCopy() as! NSMutableAttributedString
-        result.addAttribute(attribute, value: value, range: NSRange(location: 0, length: result.length))
+        result.addAttribute(attribute, value: value, range:  NSRange(location: 0, length: result.length))
         return result
     }
 }
 
 
-extension InlineElement {
+extension Inline {
     func render(font: UIFont) -> NSAttributedString {
         switch self {
-        case .Text(let text):
-            return NSAttributedString(string: text, attributes: [NSFontAttributeName: font])
-        case .Strong(let children):
-            let result = children.map { $0.render(font) }.join() as! NSMutableAttributedString
-            return result.addingAttribute(NSFontAttributeName, value: font.bold)
+        case .text(let text):
+            return NSAttributedString(string: text, attributes: [NSAttributedStringKey.font: font])
+        case .strong(let children):
+            let result = children.map { $0.render(font: font) }.join() as! NSMutableAttributedString
+            return result.addingAttribute(attribute: NSAttributedStringKey.font, value: font.bold)
         default:
             fatalError()
         }
@@ -52,11 +52,11 @@ extension InlineElement {
 extension Block {
     func render(font: UIFont) -> NSAttributedString {
         switch self {
-        case .Paragraph(let children):
-            return children.map { $0.render(font) }.join()
-        case .Heading(let children, _):
-            let headerFont = baseFont.fontWithSize(48)
-            return children.map { $0.render(headerFont) }.join()
+        case .paragraph(let children):
+            return children.map { $0.render(font: font) }.join()
+        case .heading(let children, _):
+            let headerFont = baseFont.withSize(48)
+            return children.map { $0.render(font: headerFont) }.join()
         default:
             fatalError()
         }
@@ -66,8 +66,8 @@ extension Block {
 
 let baseFont = UIFont(name: "Helvetica", size: 24)!
 let tree = Node(markdown: markdown)!.elements
-let output = tree.map { $0.render(baseFont) }.join(separator: "\n")
-
+let output = tree.map { $0.render(font: baseFont) }.join(separator: "\n")
+tree
 output
 
 
