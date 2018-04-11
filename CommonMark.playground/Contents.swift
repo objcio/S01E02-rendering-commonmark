@@ -27,9 +27,9 @@ extension UIFont {
 
 
 extension NSAttributedString {
-    func addingAttribute(attribute: String, value: AnyObject) -> NSAttributedString {
+    func addingAttribute(attribute: NSAttributedStringKey, value: AnyObject) -> NSAttributedString {
         let result = mutableCopy() as! NSMutableAttributedString
-        result.addAttribute(attribute, value: value, range: NSRange(location: 0, length: result.length))
+        result.addAttribute(attribute, value: value, range:  NSRange(location: 0, length: result.length))
         return result
     }
 }
@@ -39,10 +39,10 @@ extension Inline {
     func render(font: UIFont) -> NSAttributedString {
         switch self {
         case .text(let text):
-            return NSAttributedString(string: text, attributes: [NSFontAttributeName: font])
+            return NSAttributedString(string: text, attributes: [NSAttributedStringKey.font: font])
         case .strong(let children):
             let result = children.map { $0.render(font: font) }.join() as! NSMutableAttributedString
-            return result.addingAttribute(attribute: NSFontAttributeName, value: font.bold)
+            return result.addingAttribute(attribute: NSAttributedStringKey.font, value: font.bold)
         default:
             fatalError()
         }
@@ -67,7 +67,7 @@ extension Block {
 let baseFont = UIFont(name: "Helvetica", size: 24)!
 let tree = Node(markdown: markdown)!.elements
 let output = tree.map { $0.render(font: baseFont) }.join(separator: "\n")
-
+tree
 output
 
 
